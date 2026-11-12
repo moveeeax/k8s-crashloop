@@ -12,4 +12,10 @@ k8s-crashloop -n prod --json
 
 # just the table, no log fetch
 k8s-crashloop -A --tail 0
+
+# containers that restarted in the last day, worst 20
+k8s-crashloop restarts -A --since 24h --top 20
+
+# restarts summed per Deployment/StatefulSet/DaemonSet, with finish times
+k8s-crashloop restarts -n prod --by-owner -o wide
 ```

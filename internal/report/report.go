@@ -62,7 +62,11 @@ func JSON(w io.Writer, findings []analyze.Finding) error {
 	if findings == nil {
 		findings = []analyze.Finding{}
 	}
+	return encode(w, findings)
+}
+
+func encode(w io.Writer, v any) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
-	return enc.Encode(findings)
+	return enc.Encode(v)
 }

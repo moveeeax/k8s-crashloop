@@ -22,7 +22,20 @@ type LogFetcher interface {
 	PreviousLogs(ctx context.Context, namespace, pod, container string, tail int64) (string, error)
 }
 
-// Client is the client-go implementation of Source and LogFetcher.
+// EventSource lists the kubelet "Killing" events in the requested namespaces,
+// used to tell liveness-probe kills apart from application exits.
+type EventSource interface {
+	KillingEvents(ctx context.Context, namespaces []string) ([]corev1.Event, error)
+}
+
+// Cluster is everything the CLI reads from the API server.
+type Cluster interface {
+	Source
+	LogFetcher
+	EventSource
+}
+
+// Client is the client-go implementation of Cluster.
 type Client struct {
 	cs *kubernetes.Clientset
 }
@@ -70,4 +83,21 @@ func (c *Client) PreviousLogs(ctx context.Context, namespace, pod, container str
 		return "", err
 	}
 	return string(b), nil
+}
+
+// KillingEvents lists events with reason "Killing" in the given namespaces
+// (empty slice means all namespaces). The filter runs server-side.
+func (c *Client) KillingEvents(ctx context.Context, namespaces []string) ([]corev1.Event, error) {
+	if len(namespaces) == 0 {
+		namespaces = []string{""}
+	}
+	var out []corev1.Event
+	for _, ns := range namespaces {
+		list, err := c.cs.CoreV1().Events(ns).List(ctx, metav1.ListOptions{FieldSelector: "reason=Killing"})
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, list.Items...)
+	}
+	return out, nil
 }

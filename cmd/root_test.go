@@ -14,19 +14,24 @@ import (
 )
 
 type fakeKube struct {
-	pods []corev1.Pod
-	logs string
+	pods      []corev1.Pod
+	logs      string
+	events    []corev1.Event
+	eventsErr error
 }
 
 func (f fakeKube) Pods(context.Context, []string) ([]corev1.Pod, error) { return f.pods, nil }
 func (f fakeKube) PreviousLogs(context.Context, string, string, string, int64) (string, error) {
 	return f.logs, nil
 }
+func (f fakeKube) KillingEvents(context.Context, []string) ([]corev1.Event, error) {
+	return f.events, f.eventsErr
+}
 
 func withKube(t *testing.T, f fakeKube) {
 	t.Helper()
 	orig := providers
-	providers = func(string) (kube.Source, kube.LogFetcher, error) { return f, f, nil }
+	providers = func(string) (kube.Cluster, error) { return f, nil }
 	t.Cleanup(func() { providers = orig })
 }
 
